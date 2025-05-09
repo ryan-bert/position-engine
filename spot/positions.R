@@ -8,6 +8,8 @@ suppressMessages({
   library(jsonlite)
 })
 
+############################ LOAD PRICE DATA ############################
+
 # Load postgress credentials
 current_dir <- dirname(sys.frame(1)$ofile)
 credentials_path <- file.path("~/Documents/Credentials/Raspberry Pi/financial-database.json")
@@ -38,3 +40,7 @@ assets_df <- etf_df %>%
   bind_rows(index_df) %>%
   bind_rows(futures_df) %>%
   bind_rows(macros_df)
+
+# Select relevant columns
+assets_df <- assets_df %>%
+  select(Date, Ticker, Price)
