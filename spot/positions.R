@@ -44,3 +44,5 @@ assets_df <- etf_df %>%
 # Select relevant columns
 assets_df <- assets_df %>%
   select(Date, Ticker, Price)
+
+########################## CALCULATE POSITIONS ##########################
