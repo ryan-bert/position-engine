@@ -66,7 +66,7 @@ positions_df <- prices_df %>%
 
 # Prep for cumulative quantity calculations
 positions_df <- positions_df %>%
-  mutate(Quantity = case_when(
+  mutate(Delta_Quantity = case_when(
     is.na(Quantity) ~ 0,
     Side == "BUY" ~ Quantity,
     Side == "SELL" ~ -Quantity
@@ -76,7 +76,7 @@ positions_df <- positions_df %>%
 positions_df <- positions_df %>%
   group_by(Ticker) %>%
   arrange(Date) %>%
-  mutate(Cumulative_Quantity = cumsum(Quantity)) %>%
+  mutate(Cumulative_Quantity = cumsum(Delta_Quantity)) %>%
   ungroup()
 
 # Prep for cash calculations
@@ -106,3 +106,6 @@ positions_df <- positions_df %>%
   ungroup() %>%
   select(Date, Ticker, Cumulative_Quantity, Price)
 
+# Calculate daily value of each position
+positions_df <- positions_df %>%
+  mutate(Value = Cumulative_Quantity * Price)
