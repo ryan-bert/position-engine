@@ -45,10 +45,6 @@ assets_df <- etf_df %>%
 assets_df <- assets_df %>%
   select(Date, Ticker, Price)
 
-# Add CASH to assets
-cash_df <- data.frame(Date = unique(assets_df$Date), Ticker = "CASH", Price = 1)
-assets_df <- bind_rows(assets_df, cash_df)
-
 ########################## CALCULATE POSITIONS ##########################
 
 # Load executed trades data
@@ -60,7 +56,25 @@ prices_df <- assets_df %>%
   filter(Date >= min(trades_df$Date)) %>%
   filter(Ticker %in% trades_df$Ticker)
 
+# Add CASH to assets
+cash_df <- data.frame(Date = unique(prices_df$Date), Ticker = "CASH", Price = 1)
+prices_df <- bind_rows(prices_df, cash_df)
+
 # Join trades to price data
 positions_df <- prices_df %>%
   left_join(trades_df, by = c("Date", "Ticker"))
 
+# Prepare for cumulative calculations
+positions_df <- positions_df %>%
+  mutate(Quantity = case_when(
+    is.na(Quantity) ~ 0,
+    Side == "BUY" ~ Quantity,
+    Side == "SELL" ~ -Quantity
+  ))
+
+# Calculate cumulative quantities
+positions_df <- positions_df %>%
+  group_by(Ticker) %>%
+  arrange(Date) %>%
+  mutate(Cumulative_Quantity = cumsum(Quantity)) %>%
+  ungroup()
