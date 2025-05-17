@@ -102,7 +102,11 @@ positions_df <- positions_df %>%
 positions_df <- positions_df %>%
   group_by(Ticker) %>%
   arrange(Date) %>%
-  mutate(Cumulative_Quantity = Cumulative_Quantity + cumsum(Cash_Effect)) %>%
+  mutate(Cumulative_Quantity = if_else(
+    Ticker == "CASH",
+    cumsum(Cash_Effect),
+    Cumulative_Quantity
+  )) %>%
   ungroup() %>%
   select(Date, Ticker, Cumulative_Quantity, Price)
 
