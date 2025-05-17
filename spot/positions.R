@@ -64,7 +64,7 @@ prices_df <- bind_rows(prices_df, cash_df)
 positions_df <- prices_df %>%
   left_join(trades_df, by = c("Date", "Ticker"))
 
-# Prepare for cumulative calculations
+# Prep for cumulative quantity calculations
 positions_df <- positions_df %>%
   mutate(Quantity = case_when(
     is.na(Quantity) ~ 0,
@@ -78,3 +78,31 @@ positions_df <- positions_df %>%
   arrange(Date) %>%
   mutate(Cumulative_Quantity = cumsum(Quantity)) %>%
   ungroup()
+
+# Prep for cash calculations
+positions_df <- positions_df %>%
+  mutate(Value = case_when(
+    is.na(Value) ~ 0,
+    Ticker == "CASH" ~ 0,
+    Side == "BUY" ~ -Value,
+    Side == "SELL" ~ Value
+  ))
+
+# Calculate cash effect each day
+positions_df <- positions_df %>%
+  group_by(Date) %>%
+  mutate(Cash_Effect = if_else(
+    Ticker == "CASH",
+    sum(Value),
+    0
+  )) %>%
+  ungroup()
+
+# Calculate cumulative cash
+positions_df <- positions_df %>%
+  group_by(Ticker) %>%
+  arrange(Date) %>%
+  mutate(Cumulative_Quantity = Cumulative_Quantity + cumsum(Cash_Effect)) %>%
+  ungroup() %>%
+  select(Date, Ticker, Cumulative_Quantity, Price)
+
