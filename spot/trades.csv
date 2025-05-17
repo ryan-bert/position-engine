@@ -1,4 +1,4 @@
-Date,Ticker,Side,Quantity,Price,Multiplier,Value
+Date,Ticker,Side,Quantity,Executed_Price,Multiplier,Value
 2025-02-13,CASH,BUY,5000,1,1,5000
 2025-02-18,QQQ,BUY,5,538.5668,1,2692.834
 2025-02-18,GLD,BUY,6,270.7,1,1624.2
