@@ -47,3 +47,12 @@ assets_df <- assets_df %>%
   select(Date, Ticker, Price)
 
 ########################## CALCULATE POSITIONS ##########################
+
+# Load executed trades data
+trades_df <- read_csv(file.path(current_dir, "trades.csv"), show_col_types = FALSE) %>%
+  mutate(Date = as.Date(Date))
+
+# Filter prices for correct date range and tickers
+prices_df <- assets_df %>%
+  filter(Date >= min(trades_df$Date)) %>%
+  filter(Ticker %in% trades_df$Ticker)
