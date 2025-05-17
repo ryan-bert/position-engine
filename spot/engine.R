@@ -6,6 +6,7 @@ suppressMessages({
   library(DBI)
   library(RPostgres)
   library(jsonlite)
+  library(ggplot2)
 })
 
 ############################ LOAD PRICE DATA ############################
@@ -104,7 +105,7 @@ positions_df <- positions_df %>%
   arrange(Date) %>%
   mutate(Cumulative_Quantity = if_else(
     Ticker == "CASH",
-    cumsum(Cash_Effect),
+    Cumulative_Quantity + cumsum(Cash_Effect),
     Cumulative_Quantity
   )) %>%
   ungroup() %>%
@@ -113,3 +114,13 @@ positions_df <- positions_df %>%
 # Calculate daily value of each position
 positions_df <- positions_df %>%
   mutate(Value = Cumulative_Quantity * Price)
+
+# Plot value over time
+ggplot(positions_df, aes(x = Date, y = Value, color = Ticker)) +
+  geom_line() +
+  labs(
+    title = "Portfolio Value Over Time",
+    x = "Date",
+    y = "Value"
+  )
+ggsave(file.path(current_dir, "portfolio_value.png"), width = 10, height = 6)
