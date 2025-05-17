@@ -45,4 +45,22 @@ assets_df <- etf_df %>%
 assets_df <- assets_df %>%
   select(Date, Ticker, Price)
 
+# Add CASH to assets
+cash_df <- data.frame(Date = unique(assets_df$Date), Ticker = "CASH", Price = 1)
+assets_df <- bind_rows(assets_df, cash_df)
+
 ########################## CALCULATE POSITIONS ##########################
+
+# Load executed trades data
+trades_df <- read_csv(file.path(current_dir, "trades.csv"), show_col_types = FALSE) %>%
+  mutate(Date = as.Date(Date))
+
+# Filter prices for correct date range and tickers
+prices_df <- assets_df %>%
+  filter(Date >= min(trades_df$Date)) %>%
+  filter(Ticker %in% trades_df$Ticker)
+
+# Join trades to price data
+positions_df <- prices_df %>%
+  left_join(trades_df, by = c("Date", "Ticker"))
+
