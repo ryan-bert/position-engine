@@ -62,6 +62,10 @@ prices_df <- assets_df %>%
 cash_df <- data.frame(Date = unique(prices_df$Date), Ticker = "CASH", Price = 1)
 prices_df <- bind_rows(prices_df, cash_df)
 
+# Round prices to 4 decimal places to avoid floating point errors
+prices_df <- prices_df %>%
+  mutate(Price = round(Price, 4))
+
 # Join trades to price data
 positions_df <- prices_df %>%
   left_join(trades_df, by = c("Date", "Ticker"))
@@ -95,14 +99,14 @@ positions_df <- positions_df %>%
 
 #################### CALCULATE MARK-TO-MARKET PNL & CASH ####################
 
-# Calculate daily MtM PnL
-#! CHECK!! MIGHT BE WRONG
+# Calculate mark-to-market (MtM) PnL
 positions_df <- positions_df %>%
   group_by(Ticker) %>%
   arrange(Date) %>%
-  mutate(Daily_MtM_PnL = if_else(
-    is.na(lag(Action, default = NA)),
-    (Price - lag(Price, default = first(Price))) * lag(Position, default = 0) * Multiplier,
-    ((Price - lag(Trade_Price, default = first(Price))) * lag(Trade_Qty, default = 0) * Multiplier) + ((Price - lag(Price, default = first(Price))) * lag(Position - Trade_Qty, default = 0) * Multiplier)
-  )) %>%
+  mutate(MtM_PnL = lag(Position, default = 0) * (Price - lag(Price, default = first(Price))) * Multiplier) %>%
   ungroup()
+
+# Incorperate slippage (Differential between closing price and execution price)
+slippage_df <- positions_df %>%
+  filter()
+  
