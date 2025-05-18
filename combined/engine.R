@@ -82,8 +82,7 @@ positions_df <- positions_df %>%
     is.na(Trade_Qty) ~ 0,
     Action %in% c("BUY", "LONG") ~ Trade_Qty,
     Action %in% c("SELL", "SHORT") ~ -Trade_Qty
-  )) %>%
-  select(-Action)
+  ))
 
 # Calculate positions
 positions_df <- positions_df %>%
@@ -92,4 +91,18 @@ positions_df <- positions_df %>%
   mutate(
     Position = cumsum(Trade_Qty),
   ) %>%
+  ungroup()
+
+#################### CALCULATE MARK-TO-MARKET PNL & CASH ####################
+
+# Calculate daily MtM PnL
+#! CHECK!! MIGHT BE WRONG
+positions_df <- positions_df %>%
+  group_by(Ticker) %>%
+  arrange(Date) %>%
+  mutate(Daily_MtM_PnL = if_else(
+    is.na(lag(Action, default = NA)),
+    (Price - lag(Price, default = first(Price))) * lag(Position, default = 0) * Multiplier,
+    ((Price - lag(Trade_Price, default = first(Price))) * lag(Trade_Qty, default = 0) * Multiplier) + ((Price - lag(Price, default = first(Price))) * lag(Position - Trade_Qty, default = 0) * Multiplier)
+  )) %>%
   ungroup()
