@@ -14,6 +14,6 @@ Tables
 
 ## Positions
 
-| Date | Ticker | Quantity | Price | Multiplier | Value | Notional_Exposure |
+| Date | Ticker | Position | Price | Multiplier | Value | Notional_Exposure |
 |------|--------|----------|-------|------------|-------|-------------------|
 |      |        |          |       |            |       |                   |

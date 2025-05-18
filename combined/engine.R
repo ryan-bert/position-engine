@@ -2,6 +2,7 @@ rm(list = ls())
 
 suppressMessages({
   library(dplyr)
+  library(tidyr)
   library(readr)
   library(DBI)
   library(RPostgres)
@@ -57,6 +58,38 @@ prices_df <- assets_df %>%
   filter(Date >= min(trades_df$Date)) %>%
   filter(Ticker %in% trades_df$Ticker)
 
-# Add CASH to assets
+# Add CASH to prices
 cash_df <- data.frame(Date = unique(prices_df$Date), Ticker = "CASH", Price = 1)
 prices_df <- bind_rows(prices_df, cash_df)
+
+# Join trades to price data
+positions_df <- prices_df %>%
+  left_join(trades_df, by = c("Date", "Ticker"))
+
+# Fill static data
+positions_df <- positions_df %>%
+  group_by(Ticker) %>%
+  arrange(Date) %>%
+  fill(Asset_Class, .direction = "down") %>%
+  fill(Asset_Class, .direction = "up") %>%
+  fill(Multiplier, .direction = "down") %>%
+  fill(Multiplier, .direction = "up") %>%
+  ungroup()
+
+# Prep for cumulative quantity calculations
+positions_df <- positions_df %>%
+  mutate(Trade_Qty = case_when(
+    is.na(Trade_Qty) ~ 0,
+    Action %in% c("BUY", "LONG") ~ Trade_Qty,
+    Action %in% c("SELL", "SHORT") ~ -Trade_Qty
+  )) %>%
+  select(-Action)
+
+# Calculate positions
+positions_df <- positions_df %>%
+  group_by(Ticker) %>%
+  arrange(Date) %>%
+  mutate(
+    Position = cumsum(Trade_Qty),
+  ) %>%
+  ungroup()
