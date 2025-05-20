@@ -115,19 +115,19 @@ positions_df <- positions_df %>%
     TRUE ~ 0
   ))
 
-# # Include slippage (Differential between closing price and execution price)
-# positions_df <- positions_df %>%
-#   mutate(Cash_Effect = if_else(
-#     !is.na(Action),
-#     Cash_Effect - abs(Price - Trade_Price) * abs(Trade_Qty) * Multiplier,
-#     Cash_Effect
-#   ))
-
 # Calculate slippage
 positions_df <- positions_df %>%
   mutate(Slippage = if_else(
-    !is.na(Action),
+    !is.na(Action) & Ticker != "CASH",
     -abs(Price - Trade_Price) * abs(Trade_Qty) * Multiplier,
+    0
+  ))
+
+# Calculate fees
+positions_df <- positions_df %>%
+  mutate(Fee = if_else(
+    !is.na(Action) & Ticker != "CASH",
+    -abs(Trade_Qty) * Price * 0.001,
     0
   ))
 
@@ -136,20 +136,10 @@ positions_df <- positions_df %>%
   group_by(Date) %>%
   mutate(Cash_Effect = if_else(
     Ticker == "CASH",
-    Cash_Effect + sum(Cash_Effect[Ticker != "CASH"]) + sum(Slippage[Ticker != "CASH"]),
+    Cash_Effect + sum(Cash_Effect) + sum(Slippage) + sum(Fee),
     Cash_Effect
   )) %>%
   ungroup()
-
-# # Calculate total cash effect each day
-# positions_df <- positions_df %>%
-#   group_by(Date) %>%
-#   mutate(Cash_Effect = if_else(
-#     Ticker == "CASH",
-#     Cash_Effect + sum(Cash_Effect[Ticker != "CASH"]),
-#     Cash_Effect
-#   )) %>%
-#   ungroup()
 
 # Add cumulative cash effect from CASH
 positions_df <- positions_df %>%
@@ -172,5 +162,6 @@ summary_df <- positions_df %>%
     Total_Cash_Effect = sum(Cash_Effect),
     Total_Slippage = sum(Slippage),
     Total_MtM_PnL = sum(MtM_PnL),
-    Profit = Total_Cash_Effect + Total_Slippage
+    Total_Fee = sum(Fee),
+    Profit = Total_MtM_PnL + Total_Slippage + Total_Fee,
   )
