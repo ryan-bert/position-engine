@@ -106,7 +106,7 @@ positions_df <- positions_df %>%
   mutate(MtM_PnL = lag(Position, default = 0) * (Price - lag(Price, default = first(Price))) * Multiplier) %>%
   ungroup()
 
-# Calculate cash effect from trades (non-future) and MtM (future)
+# Calculate cash effect from trades (non-futures) and MtM (futures)
 positions_df <- positions_df %>%
   mutate(Cash_Effect = case_when(
     Ticker == "CASH" ~ 0,
