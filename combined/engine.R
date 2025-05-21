@@ -117,10 +117,11 @@ positions_df <- positions_df %>%
 
 # Calculate slippage
 positions_df <- positions_df %>%
-  mutate(Slippage = if_else(
-    !is.na(Action) & Ticker != "CASH",
-    -abs(Price - Trade_Price) * abs(Trade_Qty) * Multiplier,
-    0
+  mutate(Slippage = case_when(
+    Ticker == "CASH" ~ 0,
+    Action %in% c("BUY", "LONG") ~ (Trade_Price - Price) * Trade_Qty * Multiplier,
+    Action %in% c("SELL", "SHORT") ~ (Price - Trade_Price) * Trade_Qty * abs(Multiplier),
+    TRUE ~ 0
   ))
 
 # Calculate fees
