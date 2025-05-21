@@ -97,13 +97,13 @@ positions_df <- positions_df %>%
   ) %>%
   ungroup()
 
-#################### CALCULATE MARK-TO-MARKET PNL & CASH ####################
+################# MARK-TO-MARKET, CASH EFFECT & SLIPPAGE #################
 
 # Calculate mark-to-market (MtM) PnL
 positions_df <- positions_df %>%
   group_by(Ticker) %>%
   arrange(Date) %>%
-  mutate(MtM_PnL = lag(Position, default = 0) * (Price - lag(Price, default = first(Price))) * Multiplier) %>%
+  mutate(MtM = lag(Position, default = 0) * (Price - lag(Price, default = first(Price))) * Multiplier) %>%
   ungroup()
 
 # Calculate cash effect from trades (non-futures) and MtM (futures)
@@ -111,7 +111,7 @@ positions_df <- positions_df %>%
   mutate(Cash_Effect = case_when(
     Ticker == "CASH" ~ 0,
     !is.na(Action) & Asset_Class != "FUTURE" ~ -Trade_Qty * Price * Multiplier,
-    Asset_Class == "FUTURE" ~ MtM_PnL,
+    Asset_Class == "FUTURE" ~ MtM,
     TRUE ~ 0
   ))
 
@@ -157,12 +157,63 @@ positions_df <- positions_df %>%
     Cash_Effect
   ))
 
-summary_df <- positions_df %>%
+#################### CALCULATE TOTAL AND REALISED PnL ####################
+
+# Calculate rolling total and realised PnL per ticker
+positions_df <- positions_df %>%
+  group_by(Ticker) %>%
+  arrange(Date) %>%
+  mutate(
+    Total_PnL = cumsum(MtM + Slippage + Fee),
+    Realised_PnL = cumsum(Cash_Effect + Slippage + Fee)
+  )
+
+# Select relevant columns
+positions_df <- positions_df %>%
+  select(Date, Ticker, Asset_Class, Price, Multiplier, Position, MtM, Cash_Effect, Slippage, Fee, Total_PnL, Realised_PnL)
+
+# Calculate total profits and attribution per ticker
+ticker_performance_df <- positions_df %>%
   group_by(Ticker) %>%
   summarise(
     Total_Cash_Effect = sum(Cash_Effect),
     Total_Slippage = sum(Slippage),
-    Total_MtM_PnL = sum(MtM_PnL),
+    Total_MtM = sum(MtM),
     Total_Fee = sum(Fee),
-    Profit = Total_MtM_PnL + Total_Slippage + Total_Fee,
-  )
+    Total_PnL = Total_MtM + Total_Slippage + Total_Fee,
+    Realised_PnL = Total_Cash_Effect + Total_Slippage + Total_Fee
+  ) %>%
+  ungroup()
+
+####################### VALUE AND NOTIONAL EXPOSURE #######################
+
+# Calculate value (Futures value = 0)
+positions_df <- positions_df %>%
+  mutate(Value = case_when(
+    Asset_Class == "FUTURE" ~ 0,
+    TRUE ~ Price * Position * Multiplier
+  ))
+
+# Calculate notional exposure
+positions_df <- positions_df %>%
+  group_by(Date) %>%
+  mutate(Notional_Exposure = case_when(
+    Ticker == "CASH" & sum(abs(Position[Asset_Class == "FUTURE"])) > 0 ~ 0,
+    TRUE ~ Price * Position * Multiplier
+  )) %>%
+  ungroup()
+
+# View as a single portfolio over time
+portfolio_df <- positions_df %>%
+  group_by(Date) %>%
+  summarise(
+    Value = sum(Value),
+    Notional_Exposure = sum(Notional_Exposure),
+    Total_PnL = sum(Total_PnL),
+    Realised_PnL = sum(Realised_PnL)
+  ) %>%
+  ungroup()
+
+# Calculate leverage ratio
+portfolio_df <- portfolio_df %>%
+  mutate(Leverage = Notional_Exposure / Value)
