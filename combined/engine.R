@@ -10,11 +10,14 @@ suppressMessages({
   library(ggplot2)
 })
 
+# Define paths
+current_dir <- dirname(sys.frame(1)$ofile)
+credentials_path <- file.path("~/Documents/Credentials/Raspberry Pi/financial-database.json")
+trades_path <- file.path(current_dir, "trades.csv")
+
 ############################ LOAD PRICE DATA ############################
 
 # Load postgress credentials
-current_dir <- dirname(sys.frame(1)$ofile)
-credentials_path <- file.path("~/Documents/Credentials/Raspberry Pi/financial-database.json")
 credentials <- fromJSON(credentials_path)
 
 # Connect to the database
@@ -50,7 +53,7 @@ assets_df <- assets_df %>%
 ########################## CALCULATE POSITIONS ##########################
 
 # Load executed trades data
-trades_df <- read_csv(file.path(current_dir, "trades.csv"), show_col_types = FALSE) %>%
+trades_df <- read_csv(trades_path, show_col_types = FALSE) %>%
   mutate(Date = as.Date(Date))
 
 # Filter prices for correct date range and tickers
