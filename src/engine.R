@@ -100,7 +100,7 @@ positions_df <- positions_df %>%
   ) %>%
   ungroup()
 
-################# MARK-TO-MARKET, CASH EFFECT & SLIPPAGE #################
+################# MARK-TO-MARKET, CASH FLOWS & SLIPPAGE #################
 
 # Calculate mark-to-market (MtM) PnL
 positions_df <- positions_df %>%
@@ -109,9 +109,9 @@ positions_df <- positions_df %>%
   mutate(MtM = lag(Position, default = 0) * (Price - lag(Price, default = first(Price))) * Multiplier) %>%
   ungroup()
 
-# Calculate cash effect from trades (non-futures) and MtM (futures)
+# Calculate cash flow from trades (non-futures) and MtM (futures)
 positions_df <- positions_df %>%
-  mutate(Cash_Effect = case_when(
+  mutate(Cash_Flow = case_when(
     Ticker == "CASH" ~ 0,
     !is.na(Action) & Asset_Class != "FUTURE" ~ -Trade_Qty * Price * Multiplier,
     Asset_Class == "FUTURE" ~ MtM,
@@ -135,29 +135,29 @@ positions_df <- positions_df %>%
     0
   ))
 
-# Calculate total cash effect each day
+# Calculate total cash flow each day
 positions_df <- positions_df %>%
   group_by(Date) %>%
-  mutate(Cash_Effect = if_else(
+  mutate(Cash_Flow = if_else(
     Ticker == "CASH",
-    Cash_Effect + sum(Cash_Effect) + sum(Slippage) + sum(Fee),
-    Cash_Effect
+    Cash_Flow + sum(Cash_Flow) + sum(Slippage) + sum(Fee),
+    Cash_Flow
   )) %>%
   ungroup()
 
-# Add cumulative cash effect from CASH
+# Add cumulative cash flow from CASH
 positions_df <- positions_df %>%
   group_by(Ticker) %>%
   arrange(Date) %>%
   mutate(Position = if_else(
     Ticker == "CASH",
-    Position + cumsum(Cash_Effect),
+    Position + cumsum(Cash_Flow),
     Position
   )) %>%
-  mutate(Cash_Effect = if_else(
+  mutate(Cash_Flow = if_else(
     Ticker == "CASH",
     0,
-    Cash_Effect
+    Cash_Flow
   ))
 
 #################### CALCULATE TOTAL AND REALISED PnL ####################
@@ -168,23 +168,23 @@ positions_df <- positions_df %>%
   arrange(Date) %>%
   mutate(
     Total_PnL = cumsum(MtM + Slippage + Fee),
-    Realised_PnL = cumsum(Cash_Effect + Slippage + Fee)
+    Realised_PnL = cumsum(Cash_Flow + Slippage + Fee)
   )
 
 # Select relevant columns
 positions_df <- positions_df %>%
-  select(Date, Ticker, Asset_Class, Price, Multiplier, Position, MtM, Cash_Effect, Slippage, Fee, Total_PnL, Realised_PnL)
+  select(Date, Ticker, Asset_Class, Price, Multiplier, Position, MtM, Cash_Flow, Slippage, Fee, Total_PnL, Realised_PnL)
 
 # Calculate total profits and attribution per ticker
 ticker_performance_df <- positions_df %>%
   group_by(Ticker) %>%
   summarise(
-    Total_Cash_Effect = sum(Cash_Effect),
+    Total_Cash_Flow = sum(Cash_Flow),
     Total_Slippage = sum(Slippage),
     Total_MtM = sum(MtM),
     Total_Fee = sum(Fee),
     Total_PnL = Total_MtM + Total_Slippage + Total_Fee,
-    Realised_PnL = Total_Cash_Effect + Total_Slippage + Total_Fee
+    Realised_PnL = Total_Cash_Flow + Total_Slippage + Total_Fee
   ) %>%
   ungroup()
 
