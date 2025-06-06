@@ -13,7 +13,7 @@ suppressMessages({
 # Define paths
 current_dir <- dirname(sys.frame(1)$ofile)
 credentials_path <- file.path("~/Documents/Credentials/Raspberry Pi/financial-database.json")
-trades_path <- file.path(current_dir, "trades.csv")
+trades_path <- file.path(current_dir, "../data/trades.csv")
 
 ############################ LOAD PRICE DATA ############################
 
@@ -61,8 +61,8 @@ prices_df <- assets_df %>%
   filter(Date >= min(trades_df$Date)) %>%
   filter(Ticker %in% trades_df$Ticker)
 
-# Add CASH to prices
-cash_df <- data.frame(Date = unique(prices_df$Date), Ticker = "CASH", Price = 1)
+# Add CASH tickers to prices
+cash_df <- data.frame(Date = unique(prices_df$Date), Ticker = "USD", Price = 1)
 prices_df <- bind_rows(prices_df, cash_df)
 
 # Round prices to 4 decimal places to avoid floating point errors
@@ -112,16 +112,16 @@ positions_df <- positions_df %>%
 # Calculate cash flow from trades (non-futures) and MtM (futures)
 positions_df <- positions_df %>%
   mutate(Cash_Flow = case_when(
-    Ticker == "CASH" ~ 0,
-    !is.na(Action) & Asset_Class != "FUTURE" ~ -Trade_Qty * Price * Multiplier,
-    Asset_Class == "FUTURE" ~ MtM,
+    Asset_Class == "CASH" ~ 0,
+    !is.na(Action) & Asset_Class != "FUT" ~ -Trade_Qty * Price * Multiplier,
+    Asset_Class == "FUT" ~ MtM,
     TRUE ~ 0
   ))
 
 # Calculate slippage
 positions_df <- positions_df %>%
   mutate(Slippage = case_when(
-    Ticker == "CASH" ~ 0,
+    Asset_Class == "CASH" ~ 0,
     Action %in% c("BUY", "LONG") ~ (Trade_Price - Price) * Trade_Qty * Multiplier,
     Action %in% c("SELL", "SHORT") ~ (Price - Trade_Price) * Trade_Qty * abs(Multiplier),
     TRUE ~ 0
@@ -130,7 +130,7 @@ positions_df <- positions_df %>%
 # Calculate fees
 positions_df <- positions_df %>%
   mutate(Fee = if_else(
-    !is.na(Action) & Ticker != "CASH",
+    !is.na(Action) & Asset_Class != "CASH",
     -abs(Trade_Qty) * Price * 0.001,
     0
   ))
@@ -139,7 +139,7 @@ positions_df <- positions_df %>%
 positions_df <- positions_df %>%
   group_by(Date) %>%
   mutate(Cash_Flow = if_else(
-    Ticker == "CASH",
+    Asset_Class == "CASH",
     Cash_Flow + sum(Cash_Flow) + sum(Slippage) + sum(Fee),
     Cash_Flow
   )) %>%
@@ -150,12 +150,12 @@ positions_df <- positions_df %>%
   group_by(Ticker) %>%
   arrange(Date) %>%
   mutate(Position = if_else(
-    Ticker == "CASH",
+    Asset_Class == "CASH",
     Position + cumsum(Cash_Flow),
     Position
   )) %>%
   mutate(Cash_Flow = if_else(
-    Ticker == "CASH",
+    Asset_Class == "CASH",
     0,
     Cash_Flow
   ))
@@ -193,7 +193,7 @@ ticker_performance_df <- positions_df %>%
 # Calculate value (Futures value = 0)
 positions_df <- positions_df %>%
   mutate(Value = case_when(
-    Asset_Class == "FUTURE" ~ 0,
+    Asset_Class == "FUT" ~ 0,
     TRUE ~ Price * Position * Multiplier
   ))
 
@@ -201,7 +201,7 @@ positions_df <- positions_df %>%
 positions_df <- positions_df %>%
   group_by(Date) %>%
   mutate(Notional_Exposure = case_when(
-    Ticker == "CASH" & sum(abs(Position[Asset_Class == "FUTURE"])) > 0 ~ 0,
+    Asset_Class == "CASH" & sum(abs(Position[Asset_Class == "FUT"])) > 0 ~ 0,
     TRUE ~ Price * Position * Multiplier
   )) %>%
   ungroup()
