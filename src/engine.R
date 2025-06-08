@@ -160,7 +160,7 @@ positions_df <- positions_df %>%
     Cash_Flow
   ))
 
-#################### CALCULATE TOTAL AND REALISED PnL ####################
+##################### VALUE, NOTIONAL EXPOSURE & PnL #####################
 
 # Calculate rolling total and realised PnL per ticker
 positions_df <- positions_df %>%
@@ -174,21 +174,6 @@ positions_df <- positions_df %>%
 # Select relevant columns
 positions_df <- positions_df %>%
   select(Date, Ticker, Asset_Class, Price, Multiplier, Position, MtM, Cash_Flow, Slippage, Fee, Total_PnL, Realised_PnL)
-
-# Calculate total profits and attribution per ticker
-ticker_performance_df <- positions_df %>%
-  group_by(Ticker) %>%
-  summarise(
-    Total_Cash_Flow = sum(Cash_Flow),
-    Total_Slippage = sum(Slippage),
-    Total_MtM = sum(MtM),
-    Total_Fee = sum(Fee),
-    Total_PnL = Total_MtM + Total_Slippage + Total_Fee,
-    Realised_PnL = Total_Cash_Flow + Total_Slippage + Total_Fee
-  ) %>%
-  ungroup()
-
-####################### VALUE AND NOTIONAL EXPOSURE #######################
 
 # Calculate value (Futures value = 0)
 positions_df <- positions_df %>%
@@ -204,6 +189,21 @@ positions_df <- positions_df %>%
     Asset_Class == "CASH" & sum(abs(Position[Asset_Class == "FUT"])) > 0 ~ 0,
     TRUE ~ Price * Position * Multiplier
   )) %>%
+  ungroup()
+
+###################### PORTFOLIO VIEW & ATTRIBUTION ######################
+
+# Calculate total profits and attribution per ticker
+ticker_performance_df <- positions_df %>%
+  group_by(Ticker) %>%
+  summarise(
+    Total_Cash_Flow = sum(Cash_Flow),
+    Total_Slippage = sum(Slippage),
+    Total_MtM = sum(MtM),
+    Total_Fee = sum(Fee),
+    Total_PnL = Total_MtM + Total_Slippage + Total_Fee,
+    Realised_PnL = Total_Cash_Flow + Total_Slippage + Total_Fee
+  ) %>%
   ungroup()
 
 # View as a single portfolio over time
