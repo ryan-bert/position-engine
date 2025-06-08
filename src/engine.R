@@ -210,7 +210,7 @@ ticker_performance_df <- positions_df %>%
 portfolio_df <- positions_df %>%
   group_by(Date) %>%
   summarise(
-    Value = sum(Value),
+    NAV = sum(Value),
     Notional_Exposure = sum(Notional_Exposure),
     Total_PnL = sum(Total_PnL),
     Realised_PnL = sum(Realised_PnL)
@@ -219,4 +219,4 @@ portfolio_df <- positions_df %>%
 
 # Calculate leverage ratio
 portfolio_df <- portfolio_df %>%
-  mutate(Leverage = Notional_Exposure / Value)
+  mutate(Leverage = Notional_Exposure / NAV)
