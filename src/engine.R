@@ -15,7 +15,7 @@ current_dir <- dirname(sys.frame(1)$ofile)
 credentials_path <- file.path("~/Documents/Credentials/Raspberry Pi/financial-database.json")
 trades_path <- file.path(current_dir, "../data/trades.csv")
 
-############################ LOAD PRICE DATA ############################
+########################## LOAD PRICES & TRADES ##########################
 
 # Load postgress credentials
 credentials <- fromJSON(credentials_path)
@@ -50,11 +50,11 @@ assets_df <- etf_df %>%
 assets_df <- assets_df %>%
   select(Date, Ticker, Price)
 
-########################## CALCULATE POSITIONS ##########################
-
 # Load executed trades data
 trades_df <- read_csv(trades_path, show_col_types = FALSE) %>%
   mutate(Date = as.Date(Date))
+
+########################## CALCULATE POSITIONS ##########################
 
 # Filter prices for correct date range and tickers
 prices_df <- assets_df %>%
